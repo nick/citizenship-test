@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Quiz Game</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  </head>
+  <body>
+    <h1>Quiz Game</h1>
+    <h2 id="question"></h2>
+    <button id="show-answer">Show Answer</button>
+    <div id="answers" style="display: none"></div>
+    <button id="right" style="display: none">I got it right</button>
+    <button id="wrong" style="display: none">I got it wrong</button>
+    <h2>Scoreboard</h2>
+    <p>Correct: <span id="correct-score">0</span></p>
+    <p>Incorrect: <span id="incorrect-score">0</span></p>
+    <p>Unanswered: <span id="unanswered-score">0</span></p>
+
+    <script>
+      $(document).ready(function () {
+        let questions = []
+        let currentQuestion = null
+
+        const updateScoreboard = () => {
+          $('#correct-score').text(
+            JSON.parse(localStorage.getItem('correct') || '[]').length
+          )
+          $('#incorrect-score').text(
+            JSON.parse(localStorage.getItem('incorrect') || '[]').length
+          )
+          $('#unanswered-score').text(
+            questions.length -
+              JSON.parse(localStorage.getItem('correct') || '[]').length -
+              JSON.parse(localStorage.getItem('incorrect') || '[]').length
+          )
+        }
+
+        const getNewQuestion = () => {
+          if (questions.length === 0) return null
+
+          // Only choose from unanswered or incorrectly answered questions
+          const correct = new Set(
+            JSON.parse(localStorage.getItem('correct') || '[]')
+          )
+          const options = questions.filter(
+            (q) => !correct.has(q.question.split('.')[0])
+          )
+
+          return options[Math.floor(Math.random() * options.length)]
+        }
+
+        const loadQuestion = () => {
+          currentQuestion = getNewQuestion()
+
+          if (!currentQuestion) {
+            $('#question').text('No more questions!')
+            return
+          }
+
+          $('#question').text(currentQuestion.question)
+          $('#answers').hide().empty()
+          $('#right').hide()
+          $('#wrong').hide()
+          $('#show-answer').show()
+        }
+
+        // Load questions
+        $.getJSON('output.json', (data) => {
+          questions = data
+          loadQuestion()
+          updateScoreboard()
+        })
+
+        $('#show-answer').click(function () {
+          $(this).hide()
+
+          currentQuestion.answers.forEach((answer) => {
+            $('#answers').append('<p>' + answer + '</p>')
+          })
+
+          $('#answers').show()
+          $('#right').show()
+          $('#wrong').show()
+        })
+
+        $('#right').click(function () {
+          let correct = new Set(
+            JSON.parse(localStorage.getItem('correct') || '[]')
+          )
+          let incorrect = new Set(
+            JSON.parse(localStorage.getItem('incorrect') || '[]')
+          )
+
+          const questionNumber = currentQuestion.question.split('.')[0]
+
+          correct.add(questionNumber)
+          incorrect.delete(questionNumber)
+
+          localStorage.setItem('correct', JSON.stringify(Array.from(correct)))
+          localStorage.setItem(
+            'incorrect',
+            JSON.stringify(Array.from(incorrect))
+          )
+
+          loadQuestion()
+          updateScoreboard()
+        })
+
+        $('#wrong').click(function () {
+          let incorrect = new Set(
+            JSON.parse(localStorage.getItem('incorrect') || '[]')
+          )
+          incorrect.add(currentQuestion.question.split('.')[0])
+          localStorage.setItem(
+            'incorrect',
+            JSON.stringify(Array.from(incorrect))
+          )
+          loadQuestion()
+          updateScoreboard()
+        })
+      })
+    </script>
+  </body>
+</html>
